@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2021 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2017-2023 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,15 @@
 #ifndef ROCRAND_RNG_COMMON_H_
 #define ROCRAND_RNG_COMMON_H_
 
+#include <hip/hip_runtime.h>
+
 #ifndef FQUALIFIERS
 #define FQUALIFIERS __forceinline__ __device__ __host__
+#endif
+
+#if !defined(USE_DEVICE_DISPATCH) && !defined(_WIN32) && defined(__HIP_PLATFORM_AMD__) \
+    && !defined(USE_HIP_CPU)
+    #define USE_DEVICE_DISPATCH
 #endif
 
 #include <rocrand/rocrand_common.h>
