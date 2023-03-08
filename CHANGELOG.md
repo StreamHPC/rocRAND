@@ -5,6 +5,18 @@ Full documentation for rocRAND is available at [https://rocrand.readthedocs.io/e
 ## (Unreleased) rocRAND-x.x.x for ROCm 6.0.0
 ### Changed
 - Removed hipRAND submodule from rocRAND. hipRAND is now only available as a separate package.
+- Generator classes from `rocrand.hpp` are no longer copyable, in previous versions these copies
+would copy internal references to the generators and would lead to double free or memory leak errors.
+  These types should be moved instead of copied, and move constructors and operators are now defined
+  for them. 
+### Fixed
+- `mt19937_engine` from `rocrand.hpp` is now move-constructible and move-assignable. Previously the
+move constructor and move assignment operator was deleted for this class.
+- Various fixes for the C++ wrapper header rocrand.hpp
+  - fixed the name of `mrg31k3p` it is now correctly spelled (was incorrectly named`mrg31k3a` in
+    previous versions).
+  - added missing `order` setter method for `threefry4x64`
+  - fixed the default ordering parameter for `lfsr113`
 
 ## (Unreleased) rocRAND-2.10.17 for ROCm 5.5.0
 ### Added

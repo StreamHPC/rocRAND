@@ -160,9 +160,17 @@ public:
         }
     }
 
+    rocrand_lfsr113(const rocrand_lfsr113&) = delete;
+
+    rocrand_lfsr113(rocrand_lfsr113&&) = delete;
+
+    rocrand_lfsr113& operator=(const rocrand_lfsr113&&) = delete;
+
+    rocrand_lfsr113& operator=(rocrand_lfsr113&&) = delete;
+
     ~rocrand_lfsr113()
     {
-        hipFree(m_engines);
+        ROCRAND_HIP_FATAL_ASSERT(hipFree(m_engines));
     }
 
     void set_seed(unsigned long long seed)
