@@ -9,6 +9,7 @@ Full documentation for rocRAND is available at [https://rocrand.readthedocs.io/e
 would copy internal references to the generators and would lead to double free or memory leak errors.
   These types should be moved instead of copied, and move constructors and operators are now defined
   for them. 
+- Building rocRAND now requires a C++17 capable compiler, as the internal library sources now require it. However consuming rocRAND is still possible from C++11 as public headers don't make use of the new features.
 ### Fixed
 - `mt19937_engine` from `rocrand.hpp` is now move-constructible and move-assignable. Previously the
 move constructor and move assignment operator was deleted for this class.

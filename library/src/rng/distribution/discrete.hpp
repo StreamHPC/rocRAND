@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2017-2023 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@
 
 #include <rocrand/rocrand.h>
 
+#include "../common.hpp"
 #include "device_distributions.hpp"
 
 // Alias method
@@ -97,15 +98,15 @@ public:
         {
             if (probability != NULL)
             {
-                hipFree(probability);
+                ROCRAND_HIP_FATAL_ASSERT(hipFree(probability));
             }
             if (alias != NULL)
             {
-                hipFree(alias);
+                ROCRAND_HIP_FATAL_ASSERT(hipFree(alias));
             }
             if (cdf != NULL)
             {
-                hipFree(cdf);
+                ROCRAND_HIP_FATAL_ASSERT(hipFree(cdf));
             }
         }
         probability = NULL;

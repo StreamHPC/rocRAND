@@ -845,7 +845,7 @@ public:
 
         if(err != hipSuccess)
         {
-            hipFree(d_engines);
+            ROCRAND_HIP_FATAL_ASSERT(hipFree(d_engines));
             return ROCRAND_STATUS_INTERNAL_ERROR;
         }
 
@@ -860,7 +860,7 @@ public:
         err = hipStreamSynchronize(m_stream);
         if(err != hipSuccess)
         {
-            hipFree(d_engines);
+            ROCRAND_HIP_FATAL_ASSERT(hipFree(d_engines));
             return ROCRAND_STATUS_LAUNCH_FAILURE;
         }
 

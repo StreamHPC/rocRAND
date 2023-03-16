@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2017-2023 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,6 +45,38 @@
 
 #if __HIP_DEVICE_COMPILE__ && (defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__) || (defined(__HIP_PLATFORM_NVCC__) && (__CUDA_ARCH__ >= 530)))
 #define ROCRAND_HALF_MATH_SUPPORTED
+#endif
+
+//  Copyright 2001 John Maddock.
+//  Copyright 2017 Peter Dimov.
+//
+//  Distributed under the Boost Software License, Version 1.0.
+//
+//  See http://www.boost.org/LICENSE_1_0.txt
+//
+//  BOOST_STRINGIZE(X)
+#define ROCRAND_STRINGIZE(X) ROCRAND_DO_STRINGIZE(X)
+#define ROCRAND_DO_STRINGIZE(X) #X
+
+//  Copyright 2017 Peter Dimov.
+//
+//  Distributed under the Boost Software License, Version 1.0.
+//
+//  See http://www.boost.org/LICENSE_1_0.txt
+//
+//  BOOST_PRAGMA_MESSAGE("message")
+//
+//  Expands to the equivalent of #pragma message("message")
+#if defined(__INTEL_COMPILER)
+    #define ROCRAND_PRAGMA_MESSAGE(x) \
+        __pragma(message(__FILE__ "(" ROCRAND_STRINGIZE(__LINE__) "): note: " x))
+#elif defined(__GNUC__)
+    #define ROCRAND_PRAGMA_MESSAGE(x) _Pragma(ROCRAND_STRINGIZE(message(x)))
+#elif defined(_MSC_VER)
+    #define ROCRAND_PRAGMA_MESSAGE(x) \
+        __pragma(message(__FILE__ "(" ROCRAND_STRINGIZE(__LINE__) "): note: " x))
+#else
+    #define ROCRAND_PRAGMA_MESSAGE(x)
 #endif
 
 namespace rocrand_device {
