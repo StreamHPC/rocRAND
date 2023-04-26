@@ -124,10 +124,45 @@ struct mt19937_octo_engine
         ///
         /// which are 1 + 11 * 7 = 78 values per thread.
         unsigned int mt[1U + items_per_thread * 11U];
-        /// The index of the next value to be returned in global array of values.
-        /// The actual returned values are of a different order per n elements.
-        /// When \p mti is <tt>n</tt>, \p n new values must be calculated.
-        unsigned int mti;
+    };
+
+    struct accessor
+    {
+        accessor(unsigned int* _engines) : engines(_engines) {}
+
+        /// Load one value \p i of the octo engine \p engine_id from global memory with coalesced
+        /// access
+        MT_FQUALIFIERS unsigned int load_value(unsigned int engine_id, unsigned int i) const
+        {
+            return engines[i * stride + engine_id];
+        }
+
+        /// Load the octo engine from global memory with coalesced access
+        MT_FQUALIFIERS mt19937_octo_engine load(unsigned int engine_id) const
+        {
+            mt19937_octo_engine engine;
+#pragma unroll
+            for(unsigned int i = 0; i < n / threads_per_generator; i++)
+            {
+                engine.m_state.mt[i] = engines[i * stride + engine_id];
+            }
+            return engine;
+        }
+
+        /// Save the octo engine to global memory with coalesced access
+        MT_FQUALIFIERS void save(unsigned int engine_id, const mt19937_octo_engine& engine) const
+        {
+#pragma unroll
+            for(unsigned int i = 0; i < n / threads_per_generator; i++)
+            {
+                engines[i * stride + engine_id] = engine.m_state.mt[i];
+            }
+        }
+
+    private:
+        static constexpr unsigned int stride = threads_per_generator * generator_count;
+
+        unsigned int* engines;
     };
 
     /// Constants to map the indices to \p mt19937_octo_state.mt_extra indices.
@@ -184,9 +219,6 @@ struct mt19937_octo_engine
         constexpr unsigned int src_idx[threads_per_generator]
             = {0, 113, 170, 283, 340, 397, 510, 567};
         m_state.mt[dest_idx[tid]] = engine[src_idx[tid]];
-
-        // set to n, to indicate that a batch of n values can be calculated at a time
-        m_state.mti = n;
     }
 
     /// Returns \p val from thread <tt>tid mod 8</tt>.
@@ -389,24 +421,17 @@ struct mt19937_octo_engine
         // needs [568, 623], [0, 0]', and [341, 396]'
         const unsigned int v000 = shuffle(m_state.mt[i000_0], 0);
         comp_vector(tid, i568, i341, v000);
-
-        m_state.mti = 0;
     }
 
-    /// Every thread produces one value, must be called for all eight threads
-    /// at the same time.
-    MT_FQUALIFIERS unsigned int operator()()
+    /// Return \p i state value without tempering
+    MT_FQUALIFIERS unsigned int get(unsigned int i) const
     {
-        if(m_state.mti == n)
-        {
-            gen_next_n();
-        }
+        return m_state.mt[i];
+    }
 
-        unsigned int y = m_state.mt[m_state.mti / threads_per_generator];
-        m_state.mti += threads_per_generator;
-
-        // perform tempering on y
-
+    /// Perform tempering on y
+    static MT_FQUALIFIERS unsigned int temper(unsigned int y)
+    {
         constexpr unsigned int TEMPERING_MASK_B = 0x9D2C5680U;
         constexpr unsigned int TEMPERING_MASK_C = 0xEFC60000U;
 
@@ -539,100 +564,227 @@ __launch_bounds__(jump_ahead_thread_count) void jump_ahead_kernel(
 }
 
 ROCRAND_KERNEL
-__launch_bounds__(thread_count) void init_engines_kernel(
-    mt19937_octo_engine* __restrict__ octo_engines, const unsigned int* __restrict__ engines)
+__launch_bounds__(thread_count) void init_engines_kernel(mt19937_octo_engine::accessor octo_engines,
+                                                         const unsigned int* __restrict__ engines)
 {
-    const unsigned int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int thread_id = blockIdx.x * thread_count + threadIdx.x;
     // every eight octo engines gather from the same engine
-    octo_engines[thread_id].gather(&engines[thread_id / threads_per_generator * n]);
+    mt19937_octo_engine engine;
+    engine.gather(&engines[thread_id / threads_per_generator * n]);
+    octo_engines.save(thread_id, engine);
 }
 
-template<class T, class Distribution>
-ROCRAND_KERNEL
-    __launch_bounds__(thread_count) void generate_kernel(mt19937_octo_engine* __restrict__ engines,
-                                                         T* __restrict__ data,
-                                                         const size_t size,
-                                                         Distribution distribution)
+template<class T, class VecT, class Distribution>
+ROCRAND_KERNEL __launch_bounds__(thread_count) void generate_short_kernel(
+    mt19937_octo_engine::accessor engines,
+    const unsigned int            start_input,
+    T* __restrict__ data,
+    const size_t size,
+    VecT* __restrict__ vec_data,
+    const size_t       vec_size,
+    const unsigned int head_size,
+    const unsigned int tail_size,
+    Distribution       distribution)
 {
     constexpr unsigned int input_width  = Distribution::input_width;
     constexpr unsigned int output_width = Distribution::output_width;
+    constexpr unsigned int stride       = threads_per_generator * generator_count;
 
-    // every eight threads together produce eight values
-    constexpr unsigned int full_output_width = threads_per_generator * output_width;
-
-    using vec_type = aligned_vec_type<T, output_width>;
-
-    const unsigned int     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-    constexpr unsigned int stride    = threads_per_generator * generator_count;
+    const unsigned int thread_id = blockIdx.x * thread_count + threadIdx.x;
 
     unsigned int input[input_width];
     T            output[output_width];
 
-    // find a vec_type boundary that is a multiple of threads_per_generator
+    // Generate one extra VecT if data is not aligned by sizeof(VecT) or
+    // size % output_width != 0
+    const unsigned int extra           = (head_size > 0 || tail_size > 0) ? 1 : 0;
+    bool               is_extra_thread = false;
 
-    const uintptr_t uintptr = reinterpret_cast<uintptr_t>(data);
-    // uintptr + misalignment = nearest boundary in elements T
-    const size_t misalignment
-        = (full_output_width - (uintptr / sizeof(T)) % full_output_width) % full_output_width;
-    // number of elements T before the boundary
-    const unsigned int head_size = min(size, misalignment);
-    // number of elements T after the boundary + full elements
-    const unsigned int tail_size = (size - head_size) % full_output_width;
-    // number of boundary-aligned elements vec_type that is a multiple of thread_per_generator
-    const size_t vec_n = (size - head_size) / full_output_width * threads_per_generator;
-
-    mt19937_octo_engine engine = engines[thread_id];
-
-    // each iteration saves output_width values T as one vec_type.
-    // the number of vec_types produced by the loop is a multiple of threads_per_generator
-    // since all threads_per_generator must contribute to produce the next values
-    vec_type* vec_data = reinterpret_cast<vec_type*>(data + misalignment);
-    size_t    index;
-    for(index = thread_id; index < vec_n; index += stride)
+    // Engines have enough values, generated by the previous generate_long_kernel call,
+    // but not yet used.
+    // Since values are loaded from global memory (so dynamic indexing is not a problem),
+    // it is beneficial to calculate what iterations will actually write data.
+    const unsigned int j_start = start_input / stride;
+    const unsigned int j_end   = (start_input + vec_size + extra + stride - 1) / stride;
+    for(unsigned int j = j_start; j < j_end; j++)
     {
-        for(unsigned int i = 0; i < input_width; i++)
+        if(j * stride + thread_id >= start_input
+           && j * stride + thread_id - start_input < vec_size + extra)
         {
-            input[i] = engine();
+#pragma unroll
+            for(unsigned int i = 0; i < input_width; i++)
+            {
+                input[i] = mt19937_octo_engine::temper(
+                    engines.load_value(thread_id, j * input_width + i));
+            }
+
+            distribution(input, output);
+
+            const size_t thread_index = j * stride + thread_id - start_input;
+
+            // Mark an extra thread that will write head and tail
+            is_extra_thread = thread_index == vec_size + extra - 1;
+
+            if(thread_index < vec_size)
+            {
+                vec_data[thread_index] = *reinterpret_cast<VecT*>(output);
+            }
         }
-
-        distribution(input, output);
-
-        vec_data[index] = *reinterpret_cast<vec_type*>(output);
     }
 
-    // deal with the non-aligned elements
-
-    // number of elements T that come before and after the aligned elements
-    const unsigned int remainder = tail_size + head_size;
-    // number of output_width values T, rounded up
-    // also round up to threads_per_generator ensure that all eight threads participate in the calculation
-    const unsigned int remainder_ceil = (remainder + full_output_width - 1) / full_output_width;
-
-    // each iteration saves at most output_width values T
-    for(; index < vec_n + remainder_ceil; index += stride)
+    if constexpr(output_width > 1)
     {
-        for(unsigned int i = 0; i < input_width; i++)
+        // Save head and tail, output was generated earlier
+        if(is_extra_thread)
         {
-            input[i] = engine();
+            for(unsigned int o = 0; o < output_width; o++)
+            {
+                if(o < head_size)
+                {
+                    data[o] = output[o];
+                }
+                if(o > output_width - tail_size - 1)
+                {
+                    data[size + (output_width - tail_size - 1) - o] = output[o];
+                }
+            }
+        }
+    }
+}
+
+template<class T, class VecT, class Distribution>
+ROCRAND_KERNEL
+    __launch_bounds__(thread_count) void generate_long_kernel(mt19937_octo_engine::accessor engines,
+                                                              const unsigned int start_input,
+                                                              T* __restrict__ data,
+                                                              const size_t size,
+                                                              VecT* __restrict__ vec_data,
+                                                              const size_t       vec_size,
+                                                              const unsigned int head_size,
+                                                              const unsigned int tail_size,
+                                                              Distribution       distribution)
+{
+    constexpr unsigned int input_width      = Distribution::input_width;
+    constexpr unsigned int output_width     = Distribution::output_width;
+    constexpr unsigned int inputs_per_state = (n / threads_per_generator) / input_width;
+    constexpr unsigned int stride           = threads_per_generator * generator_count;
+    constexpr unsigned int full_stride      = stride * inputs_per_state;
+
+    const unsigned int thread_id = blockIdx.x * thread_count + threadIdx.x;
+
+    unsigned int input[input_width];
+    T            output[output_width];
+
+    // Workaround: since load() and store() use the same indices, the compiler decides to keep
+    // computed addresses alive wasting 78 * 2 VGPRs. blockDim.x equals to thread_count but it is
+    // a runtime value so save() will compute new addresses.
+    mt19937_octo_engine engine = engines.load(blockIdx.x * blockDim.x + threadIdx.x);
+
+    size_t base_index = 0;
+
+    // Start sequence: at least some engines have values, generated by the previous call for
+    // the end sequence, but not yet used.
+    if(start_input > 0)
+    {
+#pragma unroll
+        for(unsigned int j = 0; j < inputs_per_state; j++)
+        {
+            // Skip used values
+            if(j * stride + thread_id >= start_input)
+            {
+#pragma unroll
+                for(unsigned int i = 0; i < input_width; i++)
+                {
+                    input[i] = mt19937_octo_engine::temper(engine.get(j * input_width + i));
+                }
+
+                distribution(input, output);
+
+                const size_t thread_index = j * stride + thread_id - start_input;
+                vec_data[thread_index]    = *reinterpret_cast<VecT*>(output);
+            }
+        }
+        base_index = full_stride - start_input;
+    }
+
+    // Middle sequence: all engines write n * generator_count values together and use them all
+    // in a fast unrolled loop.
+    for(; base_index + full_stride <= vec_size; base_index += full_stride)
+    {
+        engine.gen_next_n();
+#pragma unroll
+        for(unsigned int j = 0; j < inputs_per_state; j++)
+        {
+#pragma unroll
+            for(unsigned int i = 0; i < input_width; i++)
+            {
+                input[i] = mt19937_octo_engine::temper(engine.get(j * input_width + i));
+            }
+
+            distribution(input, output);
+
+            const size_t thread_index = base_index + j * stride + thread_id;
+            vec_data[thread_index]    = *reinterpret_cast<VecT*>(output);
+        }
+    }
+
+    // Generate one extra VecT if data is not aligned by sizeof(VecT) or
+    // size % output_width != 0
+    const unsigned int extra = (head_size > 0 || tail_size > 0) ? 1 : 0;
+
+    // End sequence: generate n values but use only a required part of them
+    if(base_index < vec_size + extra)
+    {
+        bool is_extra_thread = false;
+        engine.gen_next_n();
+#pragma unroll
+        for(unsigned int j = 0; j < inputs_per_state; j++)
+        {
+#pragma unroll
+            for(unsigned int i = 0; i < input_width; i++)
+            {
+                input[i] = mt19937_octo_engine::temper(engine.get(j * input_width + i));
+            }
+
+            distribution(input, output);
+
+            const size_t thread_index = base_index + j * stride + thread_id;
+
+            // Mark an extra thread that will write head and tail
+            is_extra_thread = thread_index == vec_size + extra - 1;
+
+            if(thread_index < vec_size)
+            {
+                vec_data[thread_index] = *reinterpret_cast<VecT*>(output);
+            }
+            else
+            {
+                break;
+            }
         }
 
-        distribution(input, output);
-
-        for(unsigned int o = 0; o < output_width; o++)
+        if constexpr(output_width > 1)
         {
-            // only write the elements that are still required, which means
-            // that some random numbers get discarded
-            unsigned int idx = output_width * index + o;
-            if(o < output_width * vec_n + remainder)
+            // Save head and tail, output was generated earlier
+            if(is_extra_thread)
             {
-                // tail elements get wrapped around
-                data[idx % size] = output[o];
+                for(unsigned int o = 0; o < output_width; o++)
+                {
+                    if(o < head_size)
+                    {
+                        data[o] = output[o];
+                    }
+                    if(o > output_width - tail_size - 1)
+                    {
+                        data[size + (output_width - tail_size - 1) - o] = output[o];
+                    }
+                }
             }
         }
     }
 
     // save state
-    engines[thread_id] = engine;
+    engines.save(thread_id, engine);
 }
 
 } // end namespace detail
@@ -649,7 +801,7 @@ public:
     {
         // Allocate device random number engines
         auto error = hipMalloc(reinterpret_cast<void**>(&m_engines),
-                               threads_per_generator * generator_count * sizeof(octo_engine_type));
+                               generator_count * rocrand_host::detail::n * sizeof(unsigned int));
         if(error != hipSuccess)
         {
             throw ROCRAND_STATUS_ALLOCATION_FAILED;
@@ -752,7 +904,7 @@ public:
                            dim3(thread_count),
                            0,
                            m_stream,
-                           m_engines,
+                           octo_engine_type::accessor(m_engines),
                            d_engines);
 
         err = hipStreamSynchronize(m_stream);
@@ -769,12 +921,14 @@ public:
         }
 
         m_engines_initialized = true;
+        m_start_input         = 0;
+        m_prev_input_width    = 0;
 
         return ROCRAND_STATUS_SUCCESS;
     }
 
     template<class T, class Distribution = uniform_distribution<T>>
-    rocrand_status generate(T* data, size_t data_size, Distribution distribution = Distribution())
+    rocrand_status generate(T* data, size_t size, Distribution distribution = Distribution())
     {
         rocrand_status status = init();
         if(status != ROCRAND_STATUS_SUCCESS)
@@ -782,21 +936,95 @@ public:
             return status;
         }
 
-        hipLaunchKernelGGL(rocrand_host::detail::generate_kernel,
-                           dim3(block_count),
-                           dim3(thread_count),
-                           0,
-                           m_stream,
-                           m_engines,
-                           data,
-                           data_size,
-                           distribution);
+        constexpr unsigned int input_width  = Distribution::input_width;
+        constexpr unsigned int output_width = Distribution::output_width;
+        constexpr unsigned int stride       = threads_per_generator * generator_count;
+        constexpr unsigned int inputs_per_state
+            = (rocrand_host::detail::n / threads_per_generator) / input_width;
+        constexpr unsigned int full_stride = stride * inputs_per_state;
+
+        using vec_type = aligned_vec_type<T, output_width>;
+
+        const uintptr_t uintptr = reinterpret_cast<uintptr_t>(data);
+        const size_t    misalignment
+            = (output_width - uintptr / sizeof(T) % output_width) % output_width;
+        const unsigned int head_size = min(size, misalignment);
+        const unsigned int tail_size = (size - head_size) % output_width;
+        const size_t       vec_size  = (size - head_size) / output_width;
+
+        // Generate one extra vec_type if data is not aligned by sizeof(vec_type) or
+        // size % output_width != 0.
+        // One extra output is enough for all types and distributions (output_width <= 2), except
+        // uchar (output_width = 4): in very rare situations when both data and size are
+        // misaligned, head and tail may be 2-3 and they may write 1-2 common values.
+        const unsigned int extra = (head_size > 0 || tail_size > 0) ? 1 : 0;
+
+        // Each iteration saves output_width values T as one vec_type.
+        vec_type* vec_data = reinterpret_cast<vec_type*>(data + misalignment);
+
+        if(m_prev_input_width != input_width && m_start_input > 0)
+        {
+            // Move to the next stride of inputs if input_width has changed so generators
+            // will not use twice values used by the previous call. Some values may be discarded.
+
+            // First we find the max number of values used by engines:
+            const unsigned int max_used_engine_values
+                = (m_start_input + stride - 1) / stride * m_prev_input_width;
+            // and convert it to the number of inputs across all engines:
+            m_start_input = (max_used_engine_values + input_width - 1) / input_width * stride;
+            if(m_start_input >= full_stride)
+            {
+                m_start_input = 0;
+            }
+        }
+
+        if(m_start_input > 0 && m_start_input + vec_size + extra <= full_stride)
+        {
+            // Engines have enough values, generated by the previous generate_long_kernel call.
+            // This kernel does not load and store engines but loads values directly from global
+            // memory.
+            hipLaunchKernelGGL(rocrand_host::detail::generate_short_kernel,
+                               dim3(block_count),
+                               dim3(thread_count),
+                               0,
+                               m_stream,
+                               octo_engine_type::accessor(m_engines),
+                               m_start_input,
+                               data,
+                               size,
+                               vec_data,
+                               vec_size,
+                               head_size,
+                               tail_size,
+                               distribution);
+        }
+        else
+        {
+            // There are not enough generated values or no values at all
+            hipLaunchKernelGGL(rocrand_host::detail::generate_long_kernel,
+                               dim3(block_count),
+                               dim3(thread_count),
+                               0,
+                               m_stream,
+                               octo_engine_type::accessor(m_engines),
+                               m_start_input,
+                               data,
+                               size,
+                               vec_data,
+                               vec_size,
+                               head_size,
+                               tail_size,
+                               distribution);
+        }
 
         // check kernel status
         if(hipGetLastError() != hipSuccess)
         {
             return ROCRAND_STATUS_LAUNCH_FAILURE;
         }
+
+        m_start_input      = (m_start_input + vec_size + extra) % full_stride;
+        m_prev_input_width = input_width;
 
         return ROCRAND_STATUS_SUCCESS;
     }
@@ -836,8 +1064,13 @@ public:
     }
 
 private:
-    bool              m_engines_initialized;
-    octo_engine_type* m_engines;
+    bool          m_engines_initialized;
+    unsigned int* m_engines;
+    // The index of the next unused input across all engines (where "input" is `input_width`
+    // unsigned int state values), it equals to the number of inputs used by previous generate
+    // calls. 0 means that a new generation (gen_next_n) is required.
+    unsigned int m_start_input;
+    unsigned int m_prev_input_width;
 
     static constexpr unsigned int generators_per_block = thread_count / threads_per_generator;
     static constexpr unsigned int block_count          = generator_count / generators_per_block;
