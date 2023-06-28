@@ -161,6 +161,7 @@ struct runner
     }
 };
 
+#ifdef GENERATE_OTHER_KERNELS
 template<typename T, typename GenerateFunc, typename Extra>
 __global__
 __launch_bounds__(ROCRAND_DEFAULT_MAX_BLOCK_SIZE)
@@ -312,6 +313,7 @@ struct runner<rocrand_state_lfsr113>
                            extra);
     }
 };
+#endif
 
 template<typename GeneratorState, typename SobolType>
 __global__ __launch_bounds__(ROCRAND_DEFAULT_MAX_BLOCK_SIZE) void init_sobol_kernel(
@@ -324,6 +326,7 @@ __global__ __launch_bounds__(ROCRAND_DEFAULT_MAX_BLOCK_SIZE) void init_sobol_ker
     states[gridDim.x * blockDim.x * dimension + state_id] = state;
 }
 
+#if GENERATE_OTHER_KERNELS
 template<typename GeneratorState, typename SobolType>
 __global__ __launch_bounds__(ROCRAND_DEFAULT_MAX_BLOCK_SIZE) void init_scrambled_sobol_kernel(
     GeneratorState* states, SobolType* directions, SobolType* scramble_constants, SobolType offset)
@@ -337,6 +340,7 @@ __global__ __launch_bounds__(ROCRAND_DEFAULT_MAX_BLOCK_SIZE) void init_scrambled
                  &state);
     states[gridDim.x * blockDim.x * dimension + state_id] = state;
 }
+#endif
 
 // generate_kernel for the normal and scrambled sobol generators
 template<typename GeneratorState, typename T, typename GenerateFunc, typename Extra>
@@ -441,6 +445,7 @@ struct runner<rocrand_state_sobol32>
     }
 };
 
+#if GENERATE_OTHER_KERNELS
 template<>
 struct runner<rocrand_state_scrambled_sobol32>
 {
@@ -690,6 +695,7 @@ struct runner<rocrand_state_scrambled_sobol64>
                            extra);
     }
 };
+#endif
 
 template<typename T, typename GeneratorState, typename GenerateFunc, typename Extra>
 void run_benchmark(const cli::Parser& parser,
@@ -788,6 +794,7 @@ void run_benchmarks(const cli::Parser& parser,
                     hipStream_t stream)
 {
     const std::string format = parser.get<std::string>("format");
+    #ifdef GENERATE_OTHER_KERNELS
     if (distribution == "uniform-uint")
     {
         run_benchmark<unsigned int, GeneratorState>(parser, stream,
@@ -890,6 +897,7 @@ void run_benchmarks(const cli::Parser& parser,
             ROCRAND_CHECK(rocrand_destroy_discrete_distribution(discrete_distribution));
         }
     }
+    #endif
     if (distribution == "discrete-custom")
     {
         const unsigned int offset = 1234;
@@ -917,33 +925,34 @@ void run_benchmarks(const cli::Parser& parser,
     }
 }
 
-const std::vector<std::string> all_engines = {"xorwow",
-                                              "mrg31k3p",
-                                              "mrg32k3a",
-                                              "mtgp32",
+const std::vector<std::string> all_engines = {//"xorwow",
+                                              //"mrg31k3p",
+                                              //"mrg32k3a",
+                                              //"mtgp32",
                                               // "mt19937",
-                                              "philox",
-                                              "threefry2x32",
-                                              "threefry2x64",
-                                              "threefry4x32",
-                                              "threefry4x64",
+                                              //"philox",
+                                              //"threefry2x32",
+                                              //"threefry2x64",
+                                              //"threefry4x32",
+                                              //"threefry4x64",
                                               "sobol32",
-                                              "scrambled_sobol32",
-                                              "sobol64",
-                                              "scrambled_sobol64",
-                                              "lfsr113"};
+                                              //"scrambled_sobol32",
+                                              //"sobol64",
+                                              //"scrambled_sobol64",
+                                              //"lfsr113"
+                                              };
 
 const std::vector<std::string> all_distributions = {
-    "uniform-uint",
+    //s"uniform-uint",
     // "uniform-long-long",
-    "uniform-float",
-    "uniform-double",
-    "normal-float",
-    "normal-double",
-    "log-normal-float",
-    "log-normal-double",
-    "poisson",
-    "discrete-poisson",
+    //"uniform-float",
+    //"uniform-double",
+    //"normal-float",
+    //"normal-double",
+    //"log-normal-float",
+    //"log-normal-double",
+    //"poisson",
+    //"discrete-poisson",
     "discrete-custom",
 };
 
@@ -1047,6 +1056,7 @@ int main(int argc, char *argv[])
         for (auto distribution : distributions)
         {
             if (console_output) std::cout << "  " << distribution << ":" << std::endl;
+            #ifdef GENERATE_OTHER_KERNELS
             if (engine == "xorwow")
             {
                 run_benchmarks<rocrand_state_xorwow>(parser, distribution, engine, stream);
@@ -1063,10 +1073,13 @@ int main(int argc, char *argv[])
             {
                 run_benchmarks<rocrand_state_philox4x32_10>(parser, distribution, engine, stream);
             }
-            else if (engine == "sobol32")
+            else 
+            #endif
+            if (engine == "sobol32")
             {
                 run_benchmarks<rocrand_state_sobol32>(parser, distribution, engine, stream);
             }
+            #if GENERATE_OTHER_KERNELS
             else if(engine == "scrambled_sobol32")
             {
                 run_benchmarks<rocrand_state_scrambled_sobol32>(parser, distribution, engine, stream);
@@ -1103,6 +1116,7 @@ int main(int argc, char *argv[])
             {
                 run_benchmarks<rocrand_state_threefry4x64_20>(parser, distribution, engine, stream);
             }
+            #endif
         }
         std::cout << std::endl;
     }
