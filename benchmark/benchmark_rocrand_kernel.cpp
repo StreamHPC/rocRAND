@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <sys/cdefs.h>
 #include <vector>
 #include <string>
 #include <numeric>
@@ -335,6 +336,7 @@ __global__ __launch_bounds__(ROCRAND_DEFAULT_MAX_BLOCK_SIZE) void init_scrambled
 
 // generate_kernel for the normal and scrambled sobol generators
 template<typename GeneratorState, typename T, typename GenerateFunc, typename Extra>
+__attribute__((amdgpu_waves_per_eu(1, 4)))
 __global__ __launch_bounds__(ROCRAND_DEFAULT_MAX_BLOCK_SIZE) void generate_sobol_kernel(
     GeneratorState* states,
     T*              data,
