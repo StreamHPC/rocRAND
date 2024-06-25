@@ -24,6 +24,7 @@
 #include <string>
 #include <numeric>
 #include <utility>
+#include <unistd.h>
 #include <algorithm>
 
 #include "cmdparser.hpp"
@@ -487,6 +488,7 @@ int main(int argc, char *argv[])
         for (auto distribution : distributions)
         {
             if (console_output) std::cout << "  " << distribution << ":" << std::endl;
+            usleep(1000000);
             run_benchmarks(parser, rng_type, distribution, engine, stream);
         }
         std::cout << std::endl;
