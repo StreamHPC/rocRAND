@@ -174,7 +174,7 @@ struct mrg_engine_poisson_distribution
 
     mrg_engine_poisson_distribution(distribution_type dis) : dis(dis) {}
 
-    __host__ __device__
+    __forceinline__ __host__ __device__
     void operator()(const unsigned int (&input)[1], unsigned int (&output)[1]) const
     {
         // Alias method requires x in [0, 1), uint must be in [0, UINT_MAX],
