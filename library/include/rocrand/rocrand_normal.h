@@ -105,34 +105,47 @@ __forceinline__ __device__ __host__ double2 box_muller_double(ulonglong2 v)
     return box_muller_double(make_uint4(x, y, z, w));
 }
 
-__forceinline__ __device__ __host__ __half2 box_muller_half(unsigned short x, unsigned short y)
+#if defined(__HIP_PLATFORM_AMD__)
+extern "C" __device__
+_Float16 __ocml_sincos_f16(_Float16, __attribute__((address_space(5))) _Float16*);
+
+__forceinline__ __device__
+__half2  hsincos(__half x)
 {
-    #if defined(ROCRAND_HALF_MATH_SUPPORTED)
+    __half_raw s, c;
+    s = __half_raw{__ocml_sincos_f16(static_cast<__half_raw>(x).data,
+                                     (__attribute__((address_space(5))) _Float16*)&c.data)};
+    return __half2{s, c};
+}
+#endif
+
+__forceinline__ __device__ __host__
+__half2 box_muller_half(unsigned short x, unsigned short y)
+{
+#if defined(ROCRAND_HALF_MATH_SUPPORTED)
     __half u = __float2half(ROCRAND_2POW16_INV + (x * ROCRAND_2POW16_INV));
     __half v = __float2half(ROCRAND_2POW16_INV_2PI + (y * ROCRAND_2POW16_INV_2PI));
     __half s = hsqrt(__hmul(__float2half(-2.0f), hlog(u)));
-    return __half2 {
-        __hmul(hsin(v), s),
-        __hmul(hcos(v), s)
-    };
+    #if defined(__HIP_PLATFORM_AMD__)
+    return __hmul2(hsincos(v), __half2{s, s});
     #else
+    return __half2{__hmul(hsin(v), s), __hmul(hcos(v), s)};
+    #endif
+#else
     float2 r;
-    float u = ROCRAND_2POW16_INV + (x * ROCRAND_2POW16_INV);
-    float v = ROCRAND_2POW16_INV_2PI + (y * ROCRAND_2POW16_INV_2PI);
-    float s = sqrtf(-2.0f * logf(u));
+    float  u = ROCRAND_2POW16_INV + (x * ROCRAND_2POW16_INV);
+    float  v = ROCRAND_2POW16_INV_2PI + (y * ROCRAND_2POW16_INV_2PI);
+    float  s = sqrtf(-2.0f * logf(u));
     #ifdef __HIP_DEVICE_COMPILE__
-        __sincosf(v, &r.x, &r.y);
-        r.x *= s;
-        r.y *= s;
+    __sincosf(v, &r.x, &r.y);
+    r.x *= s;
+    r.y *= s;
     #else
-        r.x = sinf(v) * s;
-        r.y = cosf(v) * s;
+    r.x = sinf(v) * s;
+    r.y = cosf(v) * s;
     #endif
-    return __half2 {
-        __float2half(r.x),
-        __float2half(r.y)
-    };
-    #endif
+    return __half2{__float2half(r.x), __float2half(r.y)};
+#endif
 }
 
 template<typename state_type>
