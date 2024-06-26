@@ -108,6 +108,7 @@ void run_benchmark(benchmark::State&      state,
         HIP_CHECK(hipEventElapsedTime(&elapsed, start, stop));
 
         state.SetIterationTime(elapsed / 1000.f);
+        std::this_thread::sleep_for(std::chrono::milliseconds(int(elapsed)));
     }
     state.SetBytesProcessed(trials * state.iterations() * rounded_size * sizeof(T));
     state.SetItemsProcessed(trials * state.iterations() * rounded_size);

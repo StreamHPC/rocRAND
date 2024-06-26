@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2023 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2017-2024 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -159,6 +159,7 @@ void run_benchmark(const cli::Parser& parser,
 
     ROCRAND_CHECK(rocrand_destroy_generator(generator));
     HIP_CHECK(hipFree(data));
+    std::this_thread::sleep_for(std::chrono::milliseconds(int(elapsed)));
 }
 
 void run_benchmarks(const cli::Parser& parser,
