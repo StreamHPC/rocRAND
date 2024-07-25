@@ -638,3 +638,67 @@ test:windows:
     - cmake -E copy "$CI_PROJECT_DIR/build/install/bin/rocRAND.dll" "$CI_PROJECT_DIR/build_install_test" *>&1
     # Run package test
     - ctest --test-dir "$CI_PROJECT_DIR/build_install_test" -C $CMAKE_BUILD_TYPE --output-on-failure *>&1
+
+.statistical-test:
+  stage: test
+  tags:
+    - rocm
+    - mi100
+  needs:
+    - build:rocm-cmake-minimum
+  extends:
+    - .rocm:cmake-minimum
+    - .rules:manual
+  variables:
+    ROCRAND_STAT_TESTS_GIT_BRANCH: "develop_stream"
+    ROCRAND_STAT_TESTS_DIR: ${CI_PROJECT_DIR}/rocrand-statistical-tests
+    LOGS_DIR: ${CI_PROJECT_DIR}/logs
+  script:
+    - $SUDO_CMD apt-get update -qq
+    - $SUDO_CMD apt-get install -y -qq python3 dieharder
+    - cd $CI_PROJECT_DIR/build
+    - $SUDO_CMD dpkg -i rocrand_*.deb rocrand-dev*.deb
+    - cd $CI_PROJECT_DIR
+    - git clone -b ${ROCRAND_STAT_TESTS_GIT_BRANCH} https://gitlab-ci-token:${CI_JOB_TOKEN}@${ROCRAND_STAT_TESTS_GIT_URL}
+    - cmake
+      -S ${ROCRAND_STAT_TESTS_DIR}
+      -B ${ROCRAND_STAT_TESTS_DIR}/build
+      -G Ninja
+      -D CMAKE_CXX_COMPILER=${COMPILER}
+    - cmake --build ${ROCRAND_STAT_TESTS_DIR}/build
+    - mkdir ${LOGS_DIR}
+    - cd ${ROCRAND_STAT_TESTS_DIR}/build
+    - nproc
+  artifacts:
+    paths:
+      - ${LOGS_DIR}/*
+    expire_in: never
+
+# TestU01 SmallCrush, 10 tests, 15 statistics, takes about 5 seconds
+statistical-test:crush-small:
+  extends: .statistical-test
+  script:
+    - !reference [".statistical-test", script]
+    - python3 -u run_crush.py --logs_dir ${LOGS_DIR} --battery small |& tee ${LOGS_DIR}/summary-crush-small.log
+
+# TestU01 Crush, 96 tests, 144 statistics, takes about 30 minutes
+statistical-test:crush-medium:
+  extends: .statistical-test
+  script:
+    - !reference [".statistical-test", script]
+    - python3 -u run_crush.py --logs_dir ${LOGS_DIR} --battery medium |& tee ${LOGS_DIR}/summary-crush-medium.log
+
+# TestU01 BigCrush, 116 tests, 160 statistics, takes about 3 hours
+statistical-test:crush-big:
+  extends: .statistical-test
+  timeout: 8h
+  script:
+    - !reference [".statistical-test", script]
+    - python3 -u run_crush.py --logs_dir ${LOGS_DIR} --battery big |& tee ${LOGS_DIR}/summary-crush-big.log
+
+# Dieharder, 114 tests, takes about 25 minutes
+statistical-test:dieharder:
+  extends: .statistical-test
+  script:
+    - !reference [".statistical-test", script]
+    - python3 -u run_dieharder.py --logs_dir ${LOGS_DIR} |& tee ${LOGS_DIR}/summary-dieharder.log
