@@ -34,6 +34,7 @@ include:
       - /deps-rocm.yaml
       - /deps-nvcc.yaml
       - /deps-windows.yaml
+      - /deps-compiler-acceleration.yaml
       - /gpus-rocm.yaml
       - /gpus-nvcc.yaml
       - /rules.yaml
@@ -68,9 +69,11 @@ copyright-date:
   extends:
     - .deps:rocm
     - .deps:cmake-minimum
+    - .deps:compiler-acceleration
   before_script:
     - !reference [".deps:rocm", before_script]
     - !reference [".deps:cmake-minimum", before_script]
+    - !reference [".deps:compiler-acceleration", before_script]
 
 .rocm:cmake-latest:
   variables:
@@ -78,9 +81,11 @@ copyright-date:
   extends:
     - .deps:rocm
     - .deps:cmake-latest
+    - .deps:compiler-acceleration
   before_script:
     - !reference [".deps:rocm", before_script]
     - !reference [".deps:cmake-latest", before_script]
+    - !reference [".deps:compiler-acceleration", before_script]
 
 .rocm-hipcc:cmake-minimum:
   variables:
@@ -88,9 +93,11 @@ copyright-date:
   extends:
     - .deps:rocm
     - .deps:cmake-minimum
+    - .deps:compiler-acceleration
   before_script:
     - !reference [".deps:rocm", before_script]
     - !reference [".deps:cmake-minimum", before_script]
+    - !reference [".deps:compiler-acceleration", before_script]
 
 .nvcc:cmake-minimum:
   variables:
@@ -98,9 +105,11 @@ copyright-date:
   extends:
     - .deps:nvcc
     - .deps:cmake-minimum
+    - .deps:compiler-acceleration
   before_script:
     - !reference [".deps:nvcc", before_script]
     - !reference [".deps:cmake-minimum", before_script]
+    - !reference [".deps:compiler-acceleration", before_script]
 
 .nvcc:cmake-latest:
   variables:
@@ -108,9 +117,11 @@ copyright-date:
   extends:
     - .deps:nvcc
     - .deps:cmake-latest
+    - .deps:compiler-acceleration
   before_script:
     - !reference [".deps:nvcc", before_script]
     - !reference [".deps:cmake-latest", before_script]
+    - !reference [".deps:compiler-acceleration", before_script]
 
 .nvcc-clang:cmake-minimum:
   variables:
@@ -118,9 +129,11 @@ copyright-date:
   extends:
     - .deps:nvcc
     - .deps:cmake-latest
+    - .deps:compiler-acceleration
   before_script:
     - !reference [".deps:nvcc", before_script]
     - !reference [".deps:cmake-latest", before_script]
+    - !reference [".deps:compiler-acceleration", before_script]
 
 .rocm:build:
   variables:
@@ -148,6 +161,8 @@ copyright-date:
       -D BUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
       -D AMDGPU_TARGETS=${GPU_TARGETS}
       -D DISABLE_WERROR=OFF
+      -D CMAKE_C_COMPILER_LAUNCHER=phc_sccache_c
+      -D CMAKE_CXX_COMPILER_LAUNCHER=phc_sccache_cxx
     - cmake --build $CI_PROJECT_DIR/build
     - cmake --build $CI_PROJECT_DIR/build --target package
 
@@ -171,6 +186,9 @@ copyright-date:
       -D BUILD_FILE_REORG_BACKWARD_COMPATIBILITY=OFF
       -D BUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
       -D NVGPU_TARGETS=${GPU_TARGETS}
+      -D CMAKE_C_COMPILER_LAUNCHER=phc_sccache_c
+      -D CMAKE_CXX_COMPILER_LAUNCHER=phc_sccache_cxx
+      -D CMAKE_CUDA_COMPILER_LAUNCHER=phc_sccache_cuda
     - cmake --build $CI_PROJECT_DIR/build
     - cmake --build $CI_PROJECT_DIR/build --target package
 
@@ -304,6 +322,8 @@ benchmark:benchmark-tuning:
       -D BENCHMARK_TUNING_MIN_GRID_SIZE=${BENCHMARK_TUNING_MIN_GRID_SIZE}
       -D BENCHMARK_TUNING_THREAD_OPTIONS="${BENCHMARK_TUNING_THREAD_OPTIONS}"
       -D BENCHMARK_TUNING_BLOCK_OPTIONS="${BENCHMARK_TUNING_BLOCK_OPTIONS}"
+      -D CMAKE_C_COMPILER_LAUNCHER=phc_sccache_c
+      -D CMAKE_CXX_COMPILER_LAUNCHER=phc_sccache_cxx
     - cmake --build $CI_PROJECT_DIR/build --target benchmark_rocrand_tuning
     - $CI_PROJECT_DIR/build/benchmark/tuning/benchmark_rocrand_tuning --benchmark_out_format=json --benchmark_out=$CI_PROJECT_DIR/build/rocrand_config_tuning_${GPU_TARGET}_${CI_JOB_ID}.json
   artifacts:
