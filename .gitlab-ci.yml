@@ -641,21 +641,17 @@ test:windows:
 
 .statistical-test:
   stage: test
-  tags:
-    - rocm
-    - mi100
   needs:
     - build:rocm-cmake-minimum
   extends:
     - .rocm:cmake-minimum
-    - .rules:manual
   variables:
     ROCRAND_STAT_TESTS_GIT_BRANCH: "develop_stream"
     ROCRAND_STAT_TESTS_DIR: ${CI_PROJECT_DIR}/rocrand-statistical-tests
     LOGS_DIR: ${CI_PROJECT_DIR}/logs
   script:
     - $SUDO_CMD apt-get update -qq
-    - $SUDO_CMD apt-get install -y -qq python3 dieharder
+    - $SUDO_CMD apt-get install -y -qq python3
     - cd $CI_PROJECT_DIR/build
     - $SUDO_CMD dpkg -i rocrand_*.deb rocrand-dev*.deb
     - cd $CI_PROJECT_DIR
@@ -676,21 +672,35 @@ test:windows:
 
 # TestU01 SmallCrush, 10 tests, 15 statistics, takes about 5 seconds
 statistical-test:crush-small:
-  extends: .statistical-test
+  tags:
+    - rocm
+  extends:
+    - .statistical-test
+    - .rules:manual
   script:
     - !reference [".statistical-test", script]
     - python3 -u run_crush.py --logs_dir ${LOGS_DIR} --battery small |& tee ${LOGS_DIR}/summary-crush-small.log
 
 # TestU01 Crush, 96 tests, 144 statistics, takes about 30 minutes
 statistical-test:crush-medium:
-  extends: .statistical-test
+  tags:
+    - rocm
+    - big-parallel
+  extends:
+    - .statistical-test
+    - .rules:manual
   script:
     - !reference [".statistical-test", script]
     - python3 -u run_crush.py --logs_dir ${LOGS_DIR} --battery medium |& tee ${LOGS_DIR}/summary-crush-medium.log
 
 # TestU01 BigCrush, 116 tests, 160 statistics, takes about 3 hours
 statistical-test:crush-big:
-  extends: .statistical-test
+  tags:
+    - rocm
+    - big-parallel
+  extends:
+    - .statistical-test
+    - .rules:manual
   timeout: 8h
   script:
     - !reference [".statistical-test", script]
@@ -698,7 +708,20 @@ statistical-test:crush-big:
 
 # Dieharder, 114 tests, takes about 25 minutes
 statistical-test:dieharder:
-  extends: .statistical-test
+  extends:
+    - .statistical-test
+    - .rules:manual
   script:
     - !reference [".statistical-test", script]
+    - $SUDO_CMD apt-get install -y -qq dieharder
     - python3 -u run_dieharder.py --logs_dir ${LOGS_DIR} |& tee ${LOGS_DIR}/summary-dieharder.log
+
+# Distribution tests: Pearson, Anderson-Darling, Kolmogorov-Smirnov
+statistical-test:distributions:
+  extends:
+    - .statistical-test
+    - .rules:test
+    - .gpus:rocm
+  script:
+    - !reference [".statistical-test", script]
+    - ./test_distributions_generate --engine all --dis all --runs 100 |& tee ${LOGS_DIR}/summary-distributions.log
