@@ -661,6 +661,8 @@ test:windows:
       -B ${ROCRAND_STAT_TESTS_DIR}/build
       -G Ninja
       -D CMAKE_CXX_COMPILER=${COMPILER}
+      -D CMAKE_C_COMPILER_LAUNCHER=phc_sccache_c
+      -D CMAKE_CXX_COMPILER_LAUNCHER=phc_sccache_cxx
     - cmake --build ${ROCRAND_STAT_TESTS_DIR}/build
     - mkdir ${LOGS_DIR}
     - cd ${ROCRAND_STAT_TESTS_DIR}/build
