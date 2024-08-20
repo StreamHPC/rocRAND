@@ -164,7 +164,7 @@ copyright-date:
       -D CMAKE_C_COMPILER_LAUNCHER=phc_sccache_c
       -D CMAKE_CXX_COMPILER_LAUNCHER=phc_sccache_cxx
     - cmake --build $CI_PROJECT_DIR/build
-    - cmake --build $CI_PROJECT_DIR/build --target package
+    - if [[ "${BUILD_SHARED_LIBS}" = "ON" ]]; then cmake --build $CI_PROJECT_DIR/build --target package; fi
 
 .nvcc:build:
   stage: build
@@ -190,7 +190,7 @@ copyright-date:
       -D CMAKE_CXX_COMPILER_LAUNCHER=phc_sccache_cxx
       -D CMAKE_CUDA_COMPILER_LAUNCHER=phc_sccache_cuda
     - cmake --build $CI_PROJECT_DIR/build
-    - cmake --build $CI_PROJECT_DIR/build --target package
+    - if [[ "${BUILD_SHARED_LIBS}" = "ON" ]]; then cmake --build $CI_PROJECT_DIR/build --target package; fi
 
 # Build output is too big to upload in the case of the static library builds
 .save-artifacts:
