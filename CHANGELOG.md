@@ -29,12 +29,13 @@ Documentation for rocRAND is available at
 ### Changed
 
 * `rocrand_discrete` for MTGP32, LFSR113 and ThreeFry generators now uses the alias method, which is faster than binary search in CDF.
+* Removed TBB dependency for multi-core processing of host-side generation.
 
 ## rocRAND 3.1.1 for ROCm 6.2.4
 
 ## Fixes
 
-* Fixed " unknown extension ?>" issue in scripts/config-tuning/select_best_config.py 
+* Fixed " unknown extension ?>" issue in scripts/config-tuning/select_best_config.py
   when using python version thats older than 3.11
 * Fixed low random sequence quality of `ROCRAND_RNG_PSEUDO_THREEFRY2_64_20` and `ROCRAND_RNG_PSEUDO_THREEFRY4_64_20`.
 
@@ -60,7 +61,7 @@ Documentation for rocRAND is available at
     * If TBB is not found when configuring rocRAND, the configuration is still successful, and the host generators are executed on a single CPU thread.
 * Added the option to create a host generator to the Python wrapper
 * Added the option to create a host generator to the Fortran wrapper
-* Added dynamic ordering. This ordering is free to rearrange the produced numbers, 
+* Added dynamic ordering. This ordering is free to rearrange the produced numbers,
   which can be specific to devices and distributions. It is implemented for:
   * XORWOW, MRG32K3A, MTGP32, Philox 4x32-10, MRG31K3P, LFSR113, and ThreeFry
 * For the NVIDIA platform compilation using clang as the host compiler is now supported.
@@ -79,7 +80,7 @@ Documentation for rocRAND is available at
 
 ### Changes
 
-* For device-side generators, you can now wrap calls to rocrand_generate_* inside of a hipGraph. There are a few 
+* For device-side generators, you can now wrap calls to rocrand_generate_* inside of a hipGraph. There are a few
   things to be aware of:
   - Generator creation (rocrand_create_generator), initialization (rocrand_initialize_generator), and destruction (rocrand_destroy_generator) must still happen outside the hipGraph.
   - After the generator is created, you may call API functions to set its seed, offset, and order.
