@@ -82,16 +82,49 @@ struct threefry_device_engine : public BaseType
     // m_state from base class
 };
 
+#ifdef __HIP_DEVICE_COMPILE__
 template<class Engine, class T, class Distribution>
-__host__ __device__ __forceinline__ void generate_threefry(dim3         block_idx,
-                                                           dim3         thread_idx,
-                                                           dim3         grid_dim,
-                                                           dim3         block_dim,
-                                                           Engine       engine,
-                                                           T*           data,
-                                                           const size_t n,
-                                                           Distribution distribution)
+void generate_threefry_host(dim3 /* block_idx */,
+                            dim3 /* thread_idx */,
+                            dim3 /* grid_dim */,
+                            dim3 /* block_dim */,
+                            Engine /* engine */,
+                            T* /* data */,
+                            const size_t /* n */,
+                            Distribution /* distribution */)
+{}
+
+template<class Engine, class T, class Distribution, typename ConfigProvider, bool IsDynamic>
+__global__ __launch_bounds__((host::get_block_size<ConfigProvider, T>(IsDynamic)))
+void generate_threefry_kernel(Engine engine, T* data, const size_t n, Distribution distribution)
+#else
+template<class Engine, class T, class Distribution, typename ConfigProvider, bool IsDynamic>
+__global__ __launch_bounds__((host::get_block_size<ConfigProvider, T>(IsDynamic)))
+void generate_threefry_kernel(Engine /* engine */,
+                              T* /* data */,
+                              const size_t /* n */,
+                              Distribution /* distribution */)
+{}
+
+template<class Engine, class T, class Distribution>
+void generate_threefry_host(dim3         block_idx,
+                            dim3         thread_idx,
+                            dim3         grid_dim,
+                            dim3         block_dim,
+                            Engine       engine,
+                            T*           data,
+                            const size_t n,
+                            Distribution distribution)
+#endif
 {
+
+#ifdef __HIP_DEVICE_COMPILE__
+    dim3 block_idx  = blockIdx;
+    dim3 thread_idx = threadIdx;
+    dim3 grid_dim   = gridDim;
+    dim3 block_dim  = blockDim;
+#endif
+
     using engine_scalar_type = typename Engine::scalar_type;
 
     constexpr unsigned int input_width  = Distribution::input_width;
@@ -342,22 +375,52 @@ public:
                 return ROCRAND_STATUS_SUCCESS;
             }
 
-            status = dynamic_dispatch(m_order,
-                                      [&, this](auto is_dynamic)
-                                      {
-                                          return system_type::template launch<
-                                              generate_threefry<engine_type, T, Distribution>,
-                                              ConfigProvider,
-                                              T,
-                                              is_dynamic>(dim3(config.blocks),
-                                                          dim3(config.threads),
-                                                          0,
-                                                          m_stream,
-                                                          m_engine,
-                                                          data,
-                                                          data_size,
-                                                          distribution);
-                                      });
+            // Bypass the generalized launching mechanism for host and device, as it would introduce a level of
+            //   indirection for the device (the __global__ function calls a __device__ function). This causes
+            //   a difference in the generated assembly, in turn causing a regression for the scrambled generators
+            //   on specific data types (e.g. uchar) and architectures (e.g. gfx908).
+            if constexpr(system_type::is_device())
+            {
+                status = dynamic_dispatch(m_order,
+                                          [&, this](auto is_dynamic)
+                                          {
+                                              generate_threefry_kernel<engine_type,
+                                                                       T,
+                                                                       Distribution,
+                                                                       ConfigProvider,
+                                                                       is_dynamic>
+                                                  <<<config.blocks, config.threads, 0, m_stream>>>(
+                                                      m_engine,
+                                                      data,
+                                                      data_size,
+                                                      distribution);
+                                              if(hipGetLastError() != hipSuccess)
+                                              {
+                                                  return ROCRAND_STATUS_LAUNCH_FAILURE;
+                                              }
+                                              return ROCRAND_STATUS_SUCCESS;
+                                          });
+            }
+            else
+            {
+                status
+                    = dynamic_dispatch(m_order,
+                                       [&, this](auto is_dynamic)
+                                       {
+                                           return system_type::template launch<
+                                               generate_threefry_host<engine_type, T, Distribution>,
+                                               ConfigProvider,
+                                               T,
+                                               is_dynamic>(dim3(config.blocks),
+                                                           dim3(config.threads),
+                                                           0,
+                                                           m_stream,
+                                                           m_engine,
+                                                           data,
+                                                           data_size,
+                                                           distribution);
+                                       });
+            }
 
             // Check kernel status
             if(status != ROCRAND_STATUS_SUCCESS)
