@@ -24,13 +24,13 @@ To use the device API, include the file ``rocrand_kernel.h`` in files that defin
 
 2. Initialize the generator state parameters using ``rocrand_init``.
 
-3. Generate random numbers by calling generation function on the generator state.
+3. Generate random numbers by calling the generation function on the generator state.
 
 4. Use the results.
 
-Since the rocRAND device functions are invoked from inside the user kernel, the generated numbers may be used right away in the kernel without a need to copy them to the host memory.
+Since the rocRAND device functions are invoked from inside the user kernel, the generated numbers can be used right away in the kernel without the need to copy them to the host memory.
 
-In the below example, random number generation is using XORWOW generator.
+In the below example, random number generation is using the XORWOW generator.
 
 ..  code-block:: cpp
 
@@ -76,9 +76,9 @@ C host API allows encapsulation of the internal generator state. Random numbers 
 
 6. Clean up with ``rocrand_destroy_generator`` and ``hipFree``.
 
-To generate random numbers on the host CPU, the memory allocation in step one should be made by host memory allocation call, in step two ``rocrand_create_generator_host`` should be called respectfully, in the last step appropriate memory release should be made beside the ``rocrand_destroy_generator``. All other calls work identically whether you are generating random numbers on the device or on the host CPU. 
+To generate random numbers on the host CPU, the memory allocation in step one should be made using a host memory allocation call. In step two ``rocrand_create_generator_host`` should be called respectfully. In the last step, the appropriate memory release should be made using the ``rocrand_destroy_generator``. All other calls work identically whether you are generating random numbers on the device or on the host CPU. 
 
-In the example below the C host API is used to generate 10 random floats using GPU capabilities.
+In the example below, the C host API is used to generate 10 random floats using GPU capabilities.
 
 ..  code-block:: c
 
@@ -118,9 +118,9 @@ In the example below the C host API is used to generate 10 random floats using G
 C++ host API wrapper
 ====================
 
-C++ host API wrapper provides resource management and object-oriented interface for random number generation facilities.
+The C++ host API wrapper provides resource management and an object-oriented interface for random number generation facilities.
 
-In the example below C++ host API wrapper is used to produce a random number using default generation parameters.
+In the example below C++ host API wrapper is used to produce a random number using the default generation parameters.
 
 ..  code-block:: cpp
 
