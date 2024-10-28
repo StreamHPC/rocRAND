@@ -62,7 +62,7 @@ In the below example, random number generation is using the XORWOW generator.
 C host API
 ==========
 
-C host API allows encapsulation of the internal generator state. Random numbers may be produced either on the host CPU or device GPU, whether an appropriate generator object was created. The typical sequence of operations for GPU generation consists of the following steps:
+The C host API allows encapsulation of the internal generator state. Random numbers may be produced either on the host or device, depending on the created generator object. The typical sequence of operations for device generation consists of the following steps:
 
 1. Allocate memory on the device with ``hipMalloc``.
 
@@ -76,7 +76,7 @@ C host API allows encapsulation of the internal generator state. Random numbers 
 
 6. Clean up with ``rocrand_destroy_generator`` and ``hipFree``.
 
-To generate random numbers on the host CPU, the memory allocation in step one should be made using a host memory allocation call. In step two ``rocrand_create_generator_host`` should be called respectfully. In the last step, the appropriate memory release should be made using the ``rocrand_destroy_generator``. All other calls work identically whether you are generating random numbers on the device or on the host CPU. 
+To generate random numbers on the host, the memory allocation in step one should be made using a host memory allocation call. In step two ``rocrand_create_generator_host`` should be called instead. In the last step, the appropriate memory release should be made using the ``rocrand_destroy_generator``. All other calls work identically whether you are generating random numbers on the device or on the host CPU. 
 
 In the example below, the C host API is used to generate 10 random floats using GPU capabilities.
 
