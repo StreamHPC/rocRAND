@@ -3,6 +3,12 @@
 Documentation for rocRAND is available at
 [https://rocm.docs.amd.com/projects/rocRAND/en/latest/](https://rocm.docs.amd.com/projects/rocRAND/en/latest/)
 
+## (Unreleased) rocRAND-3.x.x for ROCm 6.x.x
+
+### Changed
+
+* Changed the C++ version from 14 to 17. C++14 will be deprecated in the next major release.
+
 ## rocRAND 3.3.0 for ROCm 6.4
 
 ### Added

@@ -286,7 +286,7 @@ TEST(rocrand_kernel_mtgp32, rocrand)
     typedef rocrand_state_mtgp32 state_type;
 
     state_type* states;
-    hipMallocHelper(&states, sizeof(state_type) * 8);
+    HIP_CHECK(hipMallocHelper(&states, sizeof(state_type) * 8));
 
     ROCRAND_CHECK(rocrand_make_state_mtgp32(states, mtgp32dc_params_fast_11213, 8, 0));
 
@@ -320,7 +320,7 @@ TEST(rocrand_kernel_mtgp32, rocrand_uniform)
     typedef rocrand_state_mtgp32 state_type;
 
     state_type* states;
-    hipMallocHelper(&states, sizeof(state_type) * 8);
+    HIP_CHECK(hipMallocHelper(&states, sizeof(state_type) * 8));
 
     ROCRAND_CHECK(rocrand_make_state_mtgp32(states, mtgp32dc_params_fast_11213, 8, 0));
 
@@ -352,7 +352,7 @@ TEST(rocrand_kernel_mtgp32, rocrand_normal)
     typedef rocrand_state_mtgp32 state_type;
 
     state_type* states;
-    hipMallocHelper(&states, sizeof(state_type) * 8);
+    HIP_CHECK(hipMallocHelper(&states, sizeof(state_type) * 8));
 
     ROCRAND_CHECK(rocrand_make_state_mtgp32(states, mtgp32dc_params_fast_11213, 8, 0));
 
@@ -387,7 +387,7 @@ TEST(rocrand_kernel_mtgp32, rocrand_normal_double)
     typedef rocrand_state_mtgp32 state_type;
 
     state_type* states;
-    hipMallocHelper(&states, sizeof(state_type) * 8);
+    HIP_CHECK(hipMallocHelper(&states, sizeof(state_type) * 8));
 
     ROCRAND_CHECK(rocrand_make_state_mtgp32(states, mtgp32dc_params_fast_11213, 8, 0));
 
@@ -423,7 +423,7 @@ TEST(rocrand_kernel_mtgp32, rocrand_log_normal)
     typedef rocrand_state_mtgp32 state_type;
 
     state_type* states;
-    hipMallocHelper(&states, sizeof(state_type) * 8);
+    HIP_CHECK(hipMallocHelper(&states, sizeof(state_type) * 8));
 
     ROCRAND_CHECK(rocrand_make_state_mtgp32(states, mtgp32dc_params_fast_11213, 8, 0));
 
@@ -463,7 +463,7 @@ TEST(rocrand_kernel_mtgp32, rocrand_log_normal_double)
     typedef rocrand_state_mtgp32 state_type;
 
     state_type* states;
-    hipMallocHelper(&states, sizeof(state_type) * 8);
+    HIP_CHECK(hipMallocHelper(&states, sizeof(state_type) * 8));
 
     ROCRAND_CHECK(rocrand_make_state_mtgp32(states, mtgp32dc_params_fast_11213, 8, 0));
 
@@ -508,7 +508,7 @@ TEST_P(rocrand_kernel_mtgp32_poisson, rocrand_poisson)
     const double lambda = GetParam();
 
     state_type* states;
-    hipMallocHelper(&states, sizeof(state_type) * 8);
+    HIP_CHECK(hipMallocHelper(&states, sizeof(state_type) * 8));
 
     ROCRAND_CHECK(rocrand_make_state_mtgp32(states, mtgp32dc_params_fast_11213, 8, 0));
 
