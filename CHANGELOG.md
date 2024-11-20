@@ -3,10 +3,10 @@
 Documentation for rocRAND is available at
 [https://rocm.docs.amd.com/projects/rocRAND/en/latest/](https://rocm.docs.amd.com/projects/rocRAND/en/latest/)
 
-
-## (Unreleased) rocRAND 3.2.0 for ROCm 6.4
+## (Unreleased) rocRAND 3.3.0 for ROCm 6.4
 
 ### Added
+
 * Added extended tests to `rtest.py`. These tests are extra tests that did not fit the criteria of smoke and regression tests. These tests will take much longer to run relative to smoke and regression tests. Use `python rtest.py [--emulation|-e|--test|-t]=extended` to run these tests.
 * Added regression tests to `rtest.py`. These tests recreate scenarios that have caused hardware problems in past emulation environments. Use `python rtest.py [--emulation|-e|--test|-t]=regression` to run these tests.
 * Added smoke test options, which runs a subset of the unit tests and ensures that less than 2gb of VRAM will be used. Use `python rtest.py [--emulation|-e|--test|-t]=smoke` to run these tests.
@@ -15,6 +15,7 @@ Documentation for rocRAND is available at
 ### Changed
 
 * `--test|-t` is no longer a required flag for `rtest.py`. Instead, the user can use either `--emulation|-e` or `--test|-t`, but not both.
+* Removed TBB dependency for multi-core processing of host-side generation.
 
 ## rocRAND 3.2.0 for ROCm 6.3.0
 
@@ -29,7 +30,6 @@ Documentation for rocRAND is available at
 ### Changed
 
 * `rocrand_discrete` for MTGP32, LFSR113 and ThreeFry generators now uses the alias method, which is faster than binary search in CDF.
-* Removed TBB dependency for multi-core processing of host-side generation.
 
 ## rocRAND 3.1.1 for ROCm 6.2.4
 
