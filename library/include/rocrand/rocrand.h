@@ -56,25 +56,30 @@ extern "C" {
 /**
  * \brief rocRAND function call status type
  */
-typedef enum rocrand_status {
-    ROCRAND_STATUS_SUCCESS = 0, ///< No errors
+enum rocrand_status
+{
+    ROCRAND_STATUS_SUCCESS          = 0, ///< No errors
     ROCRAND_STATUS_VERSION_MISMATCH = 100, ///< Header file and linked library version do not match
     ROCRAND_STATUS_NOT_CREATED = 101, ///< Generator was not created using rocrand_create_generator
     ROCRAND_STATUS_ALLOCATION_FAILED = 102, ///< Memory allocation failed during execution
-    ROCRAND_STATUS_TYPE_ERROR = 103, ///< Generator type is wrong
-    ROCRAND_STATUS_OUT_OF_RANGE = 104, ///< Argument out of range
-    ROCRAND_STATUS_LENGTH_NOT_MULTIPLE = 105, ///< Requested size is not a multiple of quasirandom generator's dimension,
-                                              ///< or requested size is not even (see rocrand_generate_normal()),
-                                              ///< or pointer is misaligned (see rocrand_generate_normal())
+    ROCRAND_STATUS_TYPE_ERROR        = 103, ///< Generator type is wrong
+    ROCRAND_STATUS_OUT_OF_RANGE      = 104, ///< Argument out of range
+    ROCRAND_STATUS_LENGTH_NOT_MULTIPLE
+    = 105, ///< Requested size is not a multiple of quasirandom generator's dimension,
+    ///< or requested size is not even (see rocrand_generate_normal()),
+    ///< or pointer is misaligned (see rocrand_generate_normal())
     ROCRAND_STATUS_DOUBLE_PRECISION_REQUIRED = 106, ///< GPU does not have double precision
-    ROCRAND_STATUS_LAUNCH_FAILURE = 107, ///< Kernel launch failure
-    ROCRAND_STATUS_INTERNAL_ERROR = 108 ///< Internal library error
-} rocrand_status;
+    ROCRAND_STATUS_LAUNCH_FAILURE            = 107, ///< Kernel launch failure
+    ROCRAND_STATUS_INTERNAL_ERROR            = 108 ///< Internal library error
+};
+/// \cond DO_NOT_DOCUMENT
+typedef enum rocrand_status rocrand_status;
+/// \endcond
 
 /**
  * \brief rocRAND generator type
  */
-typedef enum rocrand_rng_type
+enum rocrand_rng_type
 {
     ROCRAND_RNG_PSEUDO_DEFAULT       = 400, ///< Default pseudorandom generator
     ROCRAND_RNG_PSEUDO_XORWOW        = 401, ///< XORWOW pseudorandom generator
@@ -97,13 +102,15 @@ typedef enum rocrand_rng_type
     ROCRAND_RNG_QUASI_SCRAMBLED_SOBOL32 = 502, ///< Scrambled Sobol32 quasirandom generator
     ROCRAND_RNG_QUASI_SOBOL64           = 504, ///< Sobol64 quasirandom generator
     ROCRAND_RNG_QUASI_SCRAMBLED_SOBOL64 = 505 ///< Scrambled Sobol64 quasirandom generator
-
-} rocrand_rng_type;
+};
+/// \cond DO_NOT_DOCUMENT
+typedef enum rocrand_rng_type rocrand_rng_type;
+/// \endcond
 
 /**
  * \brief rocRAND generator ordering
  */
-typedef enum rocrand_ordering
+enum rocrand_ordering
 {
     ROCRAND_ORDERING_PSEUDO_BEST    = 100, ///< Best ordering for pseudorandom results
     ROCRAND_ORDERING_PSEUDO_DEFAULT = 101, ///< Default ordering for pseudorandom results
@@ -112,18 +119,24 @@ typedef enum rocrand_ordering
     ROCRAND_ORDERING_PSEUDO_DYNAMIC
     = 104, ///< Adjust to the device executing the generator. The global memory usage may be higher than with the other orderings.
     ROCRAND_ORDERING_QUASI_DEFAULT = 201 ///< n-dimensional ordering for quasirandom results
-} rocrand_ordering;
+};
+/// \cond DO_NOT_DOCUMENT
+typedef enum rocrand_ordering rocrand_ordering;
+/// \endcond
 
 /**
  * \brief rocRAND vector set
  */
-typedef enum rocrand_direction_vector_set
+enum rocrand_direction_vector_set
 {
     ROCRAND_DIRECTION_VECTORS_32_JOEKUO6           = 101,
     ROCRAND_SCRAMBLED_DIRECTION_VECTORS_32_JOEKUO6 = 102,
     ROCRAND_DIRECTION_VECTORS_64_JOEKUO6           = 103,
     ROCRAND_SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6 = 104,
-} rocrand_direction_vector_set;
+};
+/// \cond DO_NOT_DOCUMENT
+typedef enum rocrand_direction_vector_set rocrand_direction_vector_set;
+/// \endcond
 
 // Host API function
 
