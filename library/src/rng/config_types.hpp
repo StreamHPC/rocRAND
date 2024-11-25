@@ -425,9 +425,10 @@ struct static_block_size_config_provider
     struct block_size_generator_config
     {
         unsigned int threads;
+        unsigned int blocks;
     };
 
-    static constexpr inline block_size_generator_config static_config = {Threads};
+    static constexpr inline block_size_generator_config static_config = {Threads, 0};
 
     template<class>
     __host__ __device__ static constexpr block_size_generator_config
@@ -547,6 +548,20 @@ template<class ConfigProvider, class T>
 __host__ __device__ constexpr unsigned int get_block_size(const bool is_dynamic)
 {
     return ConfigProvider::template device_config<T>(is_dynamic).threads;
+}
+
+/// @brief Helper function that is needed because the enclosed expression cannot be
+/// passed to \c __launch_bounds__ on NVCC. It queries the kernel config corresponding with
+/// the passed \c ConfigProvider and \c T generated value type, and extracts the number of
+/// blocks.
+/// @tparam ConfigProvider The \c ConfigProvider which is queried for configs.
+/// @tparam T The current generated value type.
+/// @param is_dynamic Whether the current kernel uses dynamic ordering or not.
+/// @returns The number of blocks for the current config.
+template<class ConfigProvider, class T>
+__host__ __device__ constexpr unsigned int get_grid_size(const bool is_dynamic)
+{
+    return ConfigProvider::template device_config<T>(is_dynamic).blocks;
 }
 
 /// @brief Extracts the `rocrand_rng_type` from a generator template.

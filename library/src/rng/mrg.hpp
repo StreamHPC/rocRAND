@@ -65,7 +65,7 @@ __host__ __device__ void init_engines_mrg(dim3               block_idx,
 template<class ConfigProvider, bool IsDynamic, class Engine, class T, class Distribution>
 __host__ __device__ __forceinline__ void generate_mrg(dim3 block_idx,
                                       dim3 thread_idx,
-                                      dim3 grid_dim,
+                                      dim3 /*grid_dim*/,
                                       dim3 /*block_dim*/,
                                       Engine*            engines,
                                       const unsigned int start_engine_id,
@@ -76,15 +76,24 @@ __host__ __device__ __forceinline__ void generate_mrg(dim3 block_idx,
     static_assert(is_single_tile_config<ConfigProvider, T>(IsDynamic),
                   "This kernel should only be used with single tile configs");
     constexpr unsigned int block_size   = get_block_size<ConfigProvider, T>(IsDynamic);
+    constexpr unsigned int grid_size    = get_grid_size<ConfigProvider, T>(IsDynamic);
     constexpr unsigned int input_width  = Distribution::input_width;
     constexpr unsigned int output_width = Distribution::output_width;
 
     using vec_type = aligned_vec_type<T, output_width>;
 
     const unsigned int id     = block_idx.x * block_size + thread_idx.x;
-    const unsigned int stride = grid_dim.x * block_size;
+    constexpr unsigned int stride         = grid_size * block_size;
+    constexpr bool stride_is_power_of_two = rocrand_impl::cpp_utils::is_power_of_two(stride);
 
-    const unsigned int engine_id = (id + start_engine_id) % stride;
+    // Use bitwise computation when possible
+    const unsigned int engine_id =
+#if stride_is_power_of_two
+        (id + start_engine_id) & (stride - 1);
+#else
+        (id + start_engine_id) % stride;
+#endif
+    (void)stride_is_power_of_two;
     Engine             engine    = engines[engine_id];
 
     unsigned int input[input_width];
