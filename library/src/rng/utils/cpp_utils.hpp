@@ -277,6 +277,14 @@ constexpr T min(const T& a, const T& b)
     return a < b ? a : b;
 }
 
+template<class T>
+__host__ __device__
+inline constexpr bool is_power_of_two(const T x)
+{
+    static_assert(std::is_integral<T>::value, "T must be integer type");
+    return (x > 0) && ((x & (x - 1)) == 0);
+}
+
 } // end namespace rocrand_impl::cpp_utils
 
 #endif // ROCRAND_RNG_CPP_UTILS_HPP_
