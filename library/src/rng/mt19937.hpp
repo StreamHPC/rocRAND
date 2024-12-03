@@ -51,6 +51,8 @@
 #ifndef ROCRAND_RNG_MT19937_H_
 #define ROCRAND_RNG_MT19937_H_
 
+#include "config/mt19937_config.hpp"
+
 #include "common.hpp"
 #include "config_types.hpp"
 #include "distributions.hpp"
