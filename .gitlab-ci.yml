@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2017-2024 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (c) 2017-2025 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -206,7 +206,6 @@ copyright-date:
       - $CI_PROJECT_DIR/build/CMakeCache.txt
       - $CI_PROJECT_DIR/build/*.deb
       - $CI_PROJECT_DIR/build/*.zip
-    expire_in: 2 weeks
 
 build:rocm-cmake-minimum:
   tags:
@@ -430,17 +429,17 @@ benchmark:nvcc:
     - .rules:test
   script:
     - $SUDO_CMD apt-get update -qq
-    - $SUDO_CMD apt-get install -y -qq python3 python3-pip python3-numpy
-    - $SUDO_CMD apt-get install -y -qq wget
-    - pip3 install setuptools
+    - $SUDO_CMD apt-get install -y -qq python3 python3-pip python3-venv
     - export ROCRAND_PATH=$CI_PROJECT_DIR/build/library/
     # rocRAND Wrapper with Python 3
-    - pip3 --version
     - cd $CI_PROJECT_DIR/python/rocrand
-    - python3 setup.py test
-    - pip3 install . --user
+    - python3 -m venv rocrand-venv
+    - source rocrand-venv/bin/activate
+    - python3 -m pip install setuptools numpy
+    - python3 -m pip install .
     - python3 tests/rocrand_test.py
-    - pip3 uninstall --yes rocrand
+    - python3 -m pip uninstall --yes rocrand
+    - deactivate
 
 test:rocm-python:
   tags:
@@ -524,7 +523,11 @@ test:cpp-wrapper:
       -D BUILD_FORTRAN_WRAPPER=OFF
       -D BUILD_FILE_REORG_BACKWARD_COMPATIBILITY=OFF
       -D CMAKE_CXX_COMPILER=${COMPILER}
-    - $SUDO_CMD cmake --build $CI_PROJECT_DIR/build_only_install --target install
+      -D CMAKE_C_COMPILER_LAUNCHER=phc_sccache_c
+      -D CMAKE_CXX_COMPILER_LAUNCHER=phc_sccache_cxx
+      -D CMAKE_CUDA_COMPILER_LAUNCHER=phc_sccache_cuda
+    # Preserve $PATH when sudoing
+    - $SUDO_CMD env PATH="$PATH" cmake --build $CI_PROJECT_DIR/build_only_install --target install
     - cmake
       -S $CI_PROJECT_DIR/test/package/
       -B $CI_PROJECT_DIR/install_test
@@ -683,7 +686,7 @@ test:windows:
   artifacts:
     paths:
       - ${LOGS_DIR}/*
-    expire_in: never
+    expire_in: 3 months
 
 # TestU01 SmallCrush, 10 tests, 15 statistics, takes about 5 seconds
 statistical-test:crush-small:
