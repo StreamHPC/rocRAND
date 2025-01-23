@@ -202,7 +202,6 @@ copyright-date:
       - $CI_PROJECT_DIR/build/test/test_*
       - $CI_PROJECT_DIR/build/**/CTestTestfile.cmake
       - $CI_PROJECT_DIR/build/benchmark/benchmark_*
-      - $CI_PROJECT_DIR/build/deps/googlebenchmark/
       - $CI_PROJECT_DIR/build/CMakeCache.txt
       - $CI_PROJECT_DIR/build/*.deb
       - $CI_PROJECT_DIR/build/*.zip
@@ -339,7 +338,6 @@ benchmark:benchmark-tuning:
     paths:
       - $CI_PROJECT_DIR/build/library/
       - $CI_PROJECT_DIR/build/benchmark/
-      - $CI_PROJECT_DIR/build/deps/googlebenchmark/
       - $CI_PROJECT_DIR/build/CMakeCache.txt
       - $CI_PROJECT_DIR/build/*.json
     expire_in: 2 weeks
