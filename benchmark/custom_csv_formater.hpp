@@ -152,6 +152,7 @@ inline void customCSVReporter::ReportRuns(const std::vector<Run>& reports)
 inline void customCSVReporter::PrintRunData(const Run& run)
 {
     std::ostream& Out = GetOutputStream();
+    std::ostream& Err = GetErrorStream();
 
     //get the name of the engine and distribution:
     std::string temp = run.benchmark_name();
