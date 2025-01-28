@@ -375,6 +375,17 @@ int main(int argc, char *argv[])
     cudaStream_t stream;
     CUDA_CALL(cudaStreamCreate(&stream));
 
+    std::string format         = parser.get<std::string>("format");
+    bool        console_output = format.compare("console") == 0 ? true : false;
+
+    if(!console_output)
+    {
+        std::cout
+            << "Engine,Distribution,Throughput,Samples,AvgTime (1 Trial),Time(all),Size,Lambda"
+            << std::endl;
+        std::cout << ",,GB/s,GSample/s,ms),ms),values," << std::endl;
+    }
+
     for (auto engine : engines)
     {
         rng_type_t rng_type = CURAND_RNG_PSEUDO_XORWOW;
@@ -402,11 +413,13 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        std::cout << engine << ":" << std::endl;
+        if(console_output)
+            std::cout << engine << ":" << std::endl;
 
         for (auto distribution : distributions)
         {
-            std::cout << "  " << distribution << ":" << std::endl;
+            if(console_output)
+                std::cout << "  " << distribution << ":" << std::endl;
             run_benchmarks(parser, rng_type, distribution, engine, stream);
         }
         std::cout << std::endl;
