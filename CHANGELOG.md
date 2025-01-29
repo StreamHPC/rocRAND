@@ -7,7 +7,11 @@ Documentation for rocRAND is available at
 
 ### Changed
 * Updated several `gfx942` auto tuning parameters.
-* Changed the C++ version from 14 to 17. C++14 will be deprecated in the next major release.
+* Deprecated C++14 and set the default target to C++17.
+
+### Upcoming changes
+* C++14 will be removed in the next major release.
+
 
 ### Fixed
 * Fixed an issue where `mt19937.hpp` would cause kernel errors during auto tuning.
