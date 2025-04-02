@@ -22,8 +22,7 @@
 
 #include "rng/distribution/discrete.hpp"
 #include "rng/distribution/poisson.hpp"
-#include "rng/generator_type.hpp"
-#include "rng/generator_types.hpp"
+#include "rng/generators.hpp"
 
 #include <new>
 #include <rocrand/rocrand.h>

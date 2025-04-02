@@ -25,21 +25,7 @@
 set(CMAKE_CXX_STANDARD 17)
 # Get sources
 set(rocRAND_HIP_SRCS
-    "src/rng/generator_type_lfsr113.cpp"
-    "src/rng/generator_type_mrg31k3p.cpp"
-    "src/rng/generator_type_mrg32k3a.cpp"
-    "src/rng/generator_type_mt19937.cpp"
-    "src/rng/generator_type_mtgp32.cpp"
-    "src/rng/generator_type_philox4x32_10.cpp"
-    "src/rng/generator_type_scrambled_sobol32.cpp"
-    "src/rng/generator_type_scrambled_sobol64.cpp"
-    "src/rng/generator_type_sobol32.cpp"
-    "src/rng/generator_type_sobol64.cpp"
-    "src/rng/generator_type_threefry2x32_20.cpp"
-    "src/rng/generator_type_threefry2x64_20.cpp"
-    "src/rng/generator_type_threefry4x32_20.cpp"
-    "src/rng/generator_type_threefry4x64_20.cpp"
-    "src/rng/generator_type_xorwow.cpp"
+    "src/rng/generators.hpp"
     "src/rocrand_mt19937_precomputed.cpp"
     "src/rocrand.cpp")
 
